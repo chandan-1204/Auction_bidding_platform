@@ -1,11 +1,8 @@
 """
-Seed script — creates demo data for development.
+Seed script — creates initial data.
 
-Creates:
-- Admin user
-- FlyHigh Team Event tournament
-- 3 teams with captain accounts
-- 8 players
+In development: creates admin + demo teams/players.
+In production:  creates admin user only (from env vars).
 
 Run: python -m app.scripts.seed
 """
@@ -25,6 +22,9 @@ from app.models.models import Player, Team, Tournament, User
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+IS_PRODUCTION = APP_ENV == "production"
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@flyhigh.com")
@@ -59,6 +59,12 @@ async def seed_with_session(db: AsyncSession):
     from sqlalchemy import select
 
     # ── Admin ──────────────────────────────────────────────────────────────
+    if IS_PRODUCTION and ADMIN_PASSWORD == "admin123":
+        logger.warning(
+            "⚠️ ADMIN_PASSWORD is 'admin123' in PRODUCTION — "
+            "set a strong ADMIN_PASSWORD environment variable!"
+        )
+
     result = await db.execute(select(User).where(User.username == ADMIN_USERNAME))
     admin = result.scalar_one_or_none()
     if not admin:
@@ -70,9 +76,17 @@ async def seed_with_session(db: AsyncSession):
         )
         db.add(admin)
         await db.flush()
-        logger.info(f"Created admin: {ADMIN_USERNAME} / {ADMIN_PASSWORD}")
+        if IS_PRODUCTION:
+            logger.info(f"Created admin user: {ADMIN_USERNAME}")
+        else:
+            logger.info(f"Created admin: {ADMIN_USERNAME} / {ADMIN_PASSWORD}")
     else:
         logger.info(f"Admin already exists: {ADMIN_USERNAME}")
+
+    # ── Skip demo data in production ──────────────────────────────────────
+    if IS_PRODUCTION:
+        logger.info("🔒 Production mode — skipping demo teams and players.")
+        return
 
     # ── Tournament ────────────────────────────────────────────────────────
     result = await db.execute(select(Tournament).where(Tournament.name == "FlyHigh Team Event"))
@@ -151,3 +165,4 @@ async def seed_with_session(db: AsyncSession):
 
 if __name__ == "__main__":
     asyncio.run(seed())
+

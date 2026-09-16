@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, auctions, players, teams, tournaments
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     logger.info("🚀 FlyHigh Auction API starting up...")
+    logger.info(f"   Environment: {settings.APP_ENV}")
+    logger.info(f"   CORS origins: {settings.allowed_origins_list}")
+
     # Warm up Redis connection
     try:
         redis = await get_redis()
@@ -73,9 +77,46 @@ app.mount("/media", StaticFiles(directory=settings.MEDIA_DIR), name="media")
 # ── Health Check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
 async def health_check():
-    return {"status": "ok", "service": "flyhigh-auction-api"}
+    """
+    Production health check — verifies database and Redis connectivity.
+    Returns HTTP 200 if all systems are healthy, 503 otherwise.
+    """
+    health = {
+        "status": "ok",
+        "service": "flyhigh-auction-api",
+        "environment": settings.APP_ENV,
+        "database": "ok",
+        "redis": "ok",
+    }
+    is_healthy = True
+
+    # Check database
+    try:
+        from app.core.database import engine
+        from sqlalchemy import text
+
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as e:
+        health["database"] = f"error: {str(e)}"
+        is_healthy = False
+
+    # Check Redis
+    try:
+        redis = await get_redis()
+        await redis.ping()
+    except Exception as e:
+        health["redis"] = f"error: {str(e)}"
+        is_healthy = False
+
+    if not is_healthy:
+        health["status"] = "degraded"
+        return JSONResponse(content=health, status_code=503)
+
+    return health
 
 
 # ── Mount Socket.IO ───────────────────────────────────────────────────────────
 # Wrap FastAPI with Socket.IO ASGI app
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app, socketio_path="/socket.io")
+

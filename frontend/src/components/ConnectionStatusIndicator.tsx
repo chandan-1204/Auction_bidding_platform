@@ -70,33 +70,8 @@ export default function ConnectionStatusIndicator({
     setTimeout(() => setIsReconnecting(false), 2000);
   };
 
-  const isLive = mode === "LIVE";
-
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className}`} id="connection-status-indicator">
-      {/* Mode Badge */}
-      {showMode && mode && (
-        <div
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide transition-all shadow-sm ${
-            isLive
-              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-              : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-          }`}
-          title={
-            isLive
-              ? "LIVE TOURNAMENT MODE: Accidental reset protected, sold players locked, results permanent."
-              : "PRACTICE AUCTION MODE: Safe testing environment. Bids & rosters can be reset without affecting live results."
-          }
-        >
-          {isLive ? (
-            <Sparkles size={13} className="text-emerald-400 animate-pulse" />
-          ) : (
-            <Activity size={13} className="text-amber-400" />
-          )}
-          <span>{isLive ? "LIVE TOURNAMENT" : "PRACTICE MODE"}</span>
-        </div>
-      )}
-
       {/* Prominent Connection Status Pill */}
       <div
         className={`flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold border backdrop-blur-md transition-all shadow-sm ${

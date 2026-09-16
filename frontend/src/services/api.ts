@@ -115,10 +115,11 @@ export const auctionApi = {
     api.post(`/api/auctions/${id}/player/${playerId}`),
   pause: (id: string) => api.post(`/api/auctions/${id}/pause`),
   resume: (id: string) => api.post(`/api/auctions/${id}/resume`),
-  adminBid: (id: string, amount: number) =>
-    api.post(`/api/auctions/${id}/admin-bid`, null, { params: { amount } }),
+  adminBid: (id: string, amount: number, teamId?: string) =>
+    api.post(`/api/auctions/${id}/admin-bid`, null, { params: { amount, team_id: teamId || undefined } }),
   undoBid: (id: string) => api.post(`/api/auctions/${id}/undo-bid`),
-  markSold: (id: string) => api.post(`/api/auctions/${id}/sold`),
+  markSold: (id: string, data?: { team_id?: string }) =>
+    api.post(`/api/auctions/${id}/sold`, data ?? {}),
   markUnsold: (id: string) => api.post(`/api/auctions/${id}/unsold`),
   nextPlayer: (id: string) => api.post(`/api/auctions/${id}/next-player`),
   complete: (id: string) => api.post(`/api/auctions/${id}/complete`),

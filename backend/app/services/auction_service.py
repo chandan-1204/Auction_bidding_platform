@@ -106,6 +106,7 @@ class AuctionService:
             base_price=data.base_price,
             bid_increment=data.bid_increment,
             timer_seconds=data.timer_seconds,
+            mode=data.mode or "LIVE",
         )
         await self.event_repo.log(auction.id, "created", actor_user_id=actor_id)
         return AuctionOut.model_validate(auction)
@@ -232,27 +233,42 @@ class AuctionService:
         await self.event_repo.log(auction.id, "resumed", actor_user_id=actor_id)
         return await self._build_state_out(auction)
 
-    async def admin_bid(self, auction_id: str, amount: float, actor_id: Optional[str] = None) -> AuctionStateOut:
-        """Admin manual bid increment (no team association)."""
+    async def admin_bid(
+        self, auction_id: str, amount: float, team_id: Optional[str] = None, actor_id: Optional[str] = None
+    ) -> AuctionStateOut:
+        """Admin manual bid increment, optionally assigning a team."""
         auction = await self.auction_repo.get_by_id_locked(auction_id)
         if not auction:
             raise NotFound("Auction")
         if auction.state != "LIVE":
             raise AuctionNotLive()
 
-        # Release previous team reservation if any
-        if auction.highest_bidder_team_id:
-            prev_team = await self.team_repo.get_by_id_locked(auction.highest_bidder_team_id)
-            if prev_team:
-                await self.team_repo.update(prev_team, reserved_amount=0.0)
+        new_bidder_id = team_id or auction.highest_bidder_team_id
+        if team_id:
+            team = await self.team_repo.get_by_id_locked(team_id)
+            if not team:
+                raise NotFound("Team")
+            available = team.total_purse - team.spent_amount
+            if amount > available + 0.001:
+                raise InsufficientPurse(available, amount)
+
+            # Release previous team reservation if different
+            if auction.highest_bidder_team_id and auction.highest_bidder_team_id != team_id:
+                prev_team = await self.team_repo.get_by_id_locked(auction.highest_bidder_team_id)
+                if prev_team:
+                    await self.team_repo.update(prev_team, reserved_amount=0.0)
+
+            # Update new team reservation
+            await self.team_repo.update(team, reserved_amount=amount)
+            new_bidder_id = team_id
 
         timer_end = utcnow_ts() + timedelta(seconds=auction.timer_seconds)
         await self.auction_repo.update(
-            auction, current_bid=amount, highest_bidder_team_id=None, timer_end_at=timer_end
+            auction, current_bid=amount, highest_bidder_team_id=new_bidder_id, timer_end_at=timer_end
         )
         await self.event_repo.log(
             auction.id, "admin_bid",
-            payload=json.dumps({"amount": amount}),
+            payload=json.dumps({"amount": amount, "team_id": new_bidder_id}),
             actor_user_id=actor_id,
         )
         auction = await self.auction_repo.get_by_id(auction_id)
@@ -311,8 +327,10 @@ class AuctionService:
         auction = await self.auction_repo.get_by_id(auction_id)
         return await self._build_state_out(auction)
 
-    async def mark_sold(self, auction_id: str, actor_id: Optional[str] = None) -> AuctionStateOut:
-        """Finalize the current player as SOLD to the highest bidder."""
+    async def mark_sold(
+        self, auction_id: str, team_id: Optional[str] = None, actor_id: Optional[str] = None
+    ) -> AuctionStateOut:
+        """Finalize the current player as SOLD to the highest bidder or designated team."""
         auction = await self.auction_repo.get_by_id_locked(auction_id)
         if not auction:
             raise NotFound("Auction")
@@ -320,7 +338,8 @@ class AuctionService:
         if auction.state not in ("LIVE", "PAUSED"):
             raise InvalidStateTransition(auction.state, "SOLD")
 
-        if not auction.highest_bidder_team_id:
+        winning_team_id = team_id or auction.highest_bidder_team_id
+        if not winning_team_id:
             raise NoBidderForSold()
 
         player_id = auction.current_player_id
@@ -329,22 +348,29 @@ class AuctionService:
             raise NotFound("Player")
 
         sold_price = auction.current_bid or player.base_price
-        team_id = auction.highest_bidder_team_id
 
         # Update player status
         await self.player_repo.update(player, status="SOLD")
 
         # Convert team reservation to spent
-        team = await self.team_repo.get_by_id_locked(team_id)
+        team = await self.team_repo.get_by_id_locked(winning_team_id)
         if team:
-            assert team.spent_amount + sold_price <= team.total_purse + 0.001, "Purse invariant violation"
+            available = team.total_purse - team.spent_amount
+            if sold_price > available + 0.001:
+                raise InsufficientPurse(available, sold_price)
             new_spent = team.spent_amount + sold_price
             await self.team_repo.update(team, spent_amount=new_spent, reserved_amount=0.0)
+
+        # If previous reserved team was different, clear its reservation
+        if auction.highest_bidder_team_id and auction.highest_bidder_team_id != winning_team_id:
+            prev_team = await self.team_repo.get_by_id_locked(auction.highest_bidder_team_id)
+            if prev_team:
+                await self.team_repo.update(prev_team, reserved_amount=0.0)
 
         # Create roster entry
         await self.roster_repo.create(
             auction_id=auction_id,
-            team_id=team_id,
+            team_id=winning_team_id,
             player_id=player_id,
             sold_price=sold_price,
         )
@@ -354,11 +380,12 @@ class AuctionService:
             auction,
             state="SOLD",
             current_player_id=player_id,
+            highest_bidder_team_id=winning_team_id,
         )
 
         await self.event_repo.log(
             auction.id, "sold",
-            payload=json.dumps({"player_id": player_id, "team_id": team_id, "price": sold_price}),
+            payload=json.dumps({"player_id": player_id, "team_id": winning_team_id, "price": sold_price}),
             actor_user_id=actor_id,
         )
         auction = await self.auction_repo.get_by_id(auction_id)

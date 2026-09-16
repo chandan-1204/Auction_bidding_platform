@@ -243,7 +243,7 @@ class AuctionRepository:
             select(Auction)
             .where(
                 Auction.tournament_id == tournament_id,
-                Auction.state.notin_(["COMPLETED", "DRAFT"]),
+                Auction.state != "COMPLETED",
             )
             .options(
                 selectinload(Auction.current_player),

@@ -173,7 +173,7 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-3">
-            <ConnectionStatusIndicator mode={activeTournament?.mode} />
+            <ConnectionStatusIndicator />
             <a
               href="/live"
               target="_blank"

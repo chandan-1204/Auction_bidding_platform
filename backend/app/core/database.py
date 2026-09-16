@@ -20,10 +20,11 @@ if "asyncpg" in settings.DATABASE_URL:
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.APP_ENV == "development",
+    echo=(settings.APP_ENV == "development"),
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=300,  # Recycle connections every 5 min (important for Neon)
     connect_args=connect_args,
 )
 

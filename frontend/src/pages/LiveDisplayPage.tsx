@@ -148,7 +148,7 @@ export default function LiveDisplayPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <ConnectionStatusIndicator mode={activeTournament?.mode} />
+          <ConnectionStatusIndicator />
 
           <button
             onClick={toggleFullscreen}

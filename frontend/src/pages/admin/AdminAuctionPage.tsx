@@ -52,6 +52,8 @@ export default function AdminAuctionPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [bidTeamId, setBidTeamId] = useState<string>("");
 
   const { state, bids, connected, loading, secondsLeft, refetch } = useAuctionState({
     auctionId,
@@ -123,6 +125,9 @@ export default function AdminAuctionPage() {
       toast.error("Please select a tournament first");
       return;
     }
+    if (auctionId && !window.confirm("Start a new auction for this tournament? Current auction records will remain in history.")) {
+      return;
+    }
     setActionLoading("create");
     try {
       const res = await auctionApi.create({
@@ -131,10 +136,12 @@ export default function AdminAuctionPage() {
         base_price: 500,
         bid_increment: 100,
         timer_seconds: 15,
+        mode: "LIVE",
       });
       setAuctionId(res.data.id);
       localStorage.setItem("flyhigh_auction_id", res.data.id);
-      toast.success("Auction created");
+      toast.success("Auction created and ready!");
+      refetch();
     } catch (err) {
       toast.error(getApiError(err));
     } finally {
@@ -160,7 +167,24 @@ export default function AdminAuctionPage() {
   const handleAdminBid = async (increment: number) => {
     if (!state?.current_bid && !state?.current_player) return;
     const newAmount = (state?.current_bid ?? 0) + increment;
-    await doAction("bid", () => auctionApi.adminBid(auctionId!, newAmount), `Bid raised to ₹${newAmount}`);
+    await doAction(
+      "bid",
+      () => auctionApi.adminBid(auctionId!, newAmount, bidTeamId || undefined),
+      `Bid raised to ₹${newAmount.toLocaleString("en-IN")}`
+    );
+  };
+
+  const handleSoldClick = () => {
+    if (state?.highest_bidder_team_id) {
+      doAction("sold", () => auctionApi.markSold(auctionId!), `Player SOLD to ${state.highest_bidder_team_name}!`);
+    } else {
+      setShowSellModal(true);
+    }
+  };
+
+  const handleSellToTeam = async (teamId: string, teamName: string) => {
+    setShowSellModal(false);
+    await doAction("sold", () => auctionApi.markSold(auctionId!, { team_id: teamId }), `Player SOLD to ${teamName}!`);
   };
 
   const availablePlayers = players.filter((p) => p.status === "AVAILABLE");
@@ -190,21 +214,20 @@ export default function AdminAuctionPage() {
           <h1 className="text-2xl font-black text-gradient">Live Auction</h1>
           {state && <AuctionStateBadge state={state.state} />}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ConnectionStatus connected={connected} />
-          <button className="btn btn-ghost btn-sm" onClick={refetch}>
+          <button className="btn btn-ghost btn-sm" onClick={refetch} title="Refresh auction state">
             <RefreshCw size={14} />
           </button>
-          {!auctionId && (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleCreateAuction}
-              disabled={actionLoading === "create"}
-            >
-              {actionLoading === "create" ? <Loader size={14} className="spin" /> : <Plus size={14} />}
-              Create Auction
-            </button>
-          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleCreateAuction}
+            disabled={actionLoading === "create"}
+            title="Create or restart auction"
+          >
+            {actionLoading === "create" ? <Loader size={14} className="spin" /> : <Plus size={14} />}
+            {auctionId ? "New Auction" : "Create Auction"}
+          </button>
         </div>
       </div>
 
@@ -297,9 +320,26 @@ export default function AdminAuctionPage() {
                 <div className="divider" />
 
                 {/* Bid increments */}
-                <p className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>
-                  RAISE BID
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>
+                    RAISE BID
+                  </p>
+                  {teams.length > 0 && (
+                    <select
+                      value={bidTeamId}
+                      onChange={(e) => setBidTeamId(e.target.value)}
+                      className="text-xs bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 max-w-[130px] truncate"
+                      title="Optionally select a team to bid on their behalf"
+                    >
+                      <option value="">Bidder: Any</option>
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     className="btn btn-ghost btn-sm"
@@ -334,12 +374,23 @@ export default function AdminAuctionPage() {
                 <button
                   className="btn btn-success w-full"
                   id="sold-btn"
-                  onClick={() => doAction("sold", () => auctionApi.markSold(auctionId!), "Player SOLD!")}
-                  disabled={!["LIVE", "PAUSED"].includes(state?.state ?? "") || !state?.highest_bidder_team_id || !!actionLoading}
+                  onClick={handleSoldClick}
+                  disabled={!["LIVE", "PAUSED"].includes(state?.state ?? "") || !!actionLoading}
                 >
                   <CheckCircle size={16} />
-                  SOLD
+                  {state?.highest_bidder_team_name
+                    ? `SOLD to ${state.highest_bidder_team_name}`
+                    : "SOLD (Select Team)"}
                 </button>
+                {state?.highest_bidder_team_id && ["LIVE", "PAUSED"].includes(state?.state ?? "") && (
+                  <button
+                    type="button"
+                    className="text-xs text-emerald-400 hover:underline text-center w-full block py-0.5"
+                    onClick={() => setShowSellModal(true)}
+                  >
+                    Sell to another team…
+                  </button>
+                )}
                 <button
                   className="btn btn-danger w-full"
                   id="unsold-btn"
@@ -465,6 +516,73 @@ export default function AdminAuctionPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── MODAL: SELECT WINNING TEAM TO SELL ────────────────────────────────── */}
+      {showSellModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card-elevated max-w-md w-full p-6 border border-emerald-500/40 shadow-2xl fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                <CheckCircle size={20} />
+                <h3 className="text-lg font-black tracking-wide">Select Winning Team</h3>
+              </div>
+              <button
+                onClick={() => setShowSellModal(false)}
+                className="btn btn-ghost btn-xs text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/20">
+              <p className="text-xs text-slate-300">Selling player:</p>
+              <p className="text-base font-bold text-white">{currentPlayer?.name}</p>
+              <p className="text-xs text-emerald-400 font-semibold mt-1">
+                Final Sold Price: ₹{(state?.current_bid ?? currentPlayer?.base_price ?? 0).toLocaleString("en-IN")}
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-3">
+              Click a team to finalize the sale:
+            </p>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {teams.map((t) => {
+                const remaining = t.total_purse - t.spent_amount;
+                const canAfford = remaining >= (state?.current_bid ?? currentPlayer?.base_price ?? 0);
+                return (
+                  <button
+                    key={t.id}
+                    disabled={!canAfford || !!actionLoading}
+                    onClick={() => handleSellToTeam(t.id, t.name)}
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
+                      canAfford
+                        ? "bg-slate-900/60 hover:bg-emerald-950/40 border-slate-700 hover:border-emerald-500/60 cursor-pointer"
+                        : "opacity-40 bg-slate-900/20 border-slate-800 cursor-not-allowed"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-white">{t.name}</p>
+                      <p className="text-xs text-slate-400">
+                        Remaining Purse: ₹{remaining.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    {canAfford ? (
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded">
+                        Sell to Team
+                      </span>
+                    ) : (
+                      <span className="text-xs text-red-400 font-semibold">
+                        Over Budget
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

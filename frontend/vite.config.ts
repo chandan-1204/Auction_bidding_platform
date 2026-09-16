@@ -21,7 +21,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/socket.io": {
-        target: process.env.VITE_WS_URL || "http://localhost:8000",
+        target: process.env.VITE_SOCKET_URL || "http://localhost:8000",
         changeOrigin: true,
         ws: true,
       },

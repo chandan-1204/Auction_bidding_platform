@@ -235,9 +235,13 @@ class AuctionStateOut(OrmModel):
     timer_seconds: int
 
 
+class MarkSoldIn(BaseModel):
+    team_id: Optional[str] = None
+
+
 class ResetTournamentRequest(BaseModel):
     password: str = Field(..., min_length=1)
-    mode: Optional[str] = "PRACTICE"  # PRACTICE | LIVE
+    mode: Optional[str] = "LIVE"  # LIVE
     confirm_phrase: Optional[str] = None  # required in LIVE mode: "RESET-LIVE-AUCTION"
 
 

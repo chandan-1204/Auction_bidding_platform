@@ -396,7 +396,7 @@ export default function AdminSettingsPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-black text-gradient">Tournament Settings</h1>
-            <ConnectionStatusIndicator mode={tMode} />
+            <ConnectionStatusIndicator />
           </div>
           <p className="text-sm text-slate-400 mt-1">
             Configure tournament identity, auction rules, team purses, captain accounts, and pre-auction readiness.
@@ -462,19 +462,6 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-
-          <div className="text-right">
-            <span className="text-xs text-slate-400">Current Arena Mode:</span>
-            <span
-              className={`ml-2 text-xs font-black uppercase px-2 py-0.5 rounded ${
-                isLive
-                  ? "bg-emerald-500/20 text-emerald-400"
-                  : "bg-amber-500/20 text-amber-400"
-              }`}
-            >
-              {tMode}
-            </span>
-          </div>
         </div>
 
         {/* 10 Items Grid */}
@@ -506,77 +493,7 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      {/* ── 2. TOURNAMENT MODE SWITCHER ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Practice Mode Card */}
-        <div
-          onClick={() => setTMode("PRACTICE")}
-          className={`glass-card p-6 cursor-pointer border-2 transition-all relative ${
-            tMode === "PRACTICE"
-              ? "border-amber-500 bg-amber-950/20 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-              : "border-slate-800 hover:border-slate-600 opacity-70"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-amber-400 font-bold">
-              <Activity size={20} />
-              <span className="text-base tracking-wide">PRACTICE AUCTION MODE</span>
-            </div>
-            {tMode === "PRACTICE" && (
-              <span className="badge badge-yellow text-xs px-2 py-0.5">ACTIVE</span>
-            )}
-          </div>
-          <p className="text-xs text-slate-300 mb-3 leading-relaxed">
-            Safe rehearsal & test environment. Captains and auctioneers can practice bidding, timers, and sold actions.
-            Practice data can be cleared at any time without impacting live tournament records.
-          </p>
-          <ul className="text-xs text-slate-400 space-y-1">
-            <li className="flex items-center gap-1.5">
-              <Check size={12} className="text-amber-400" /> Non-destructive testing
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Check size={12} className="text-amber-400" /> Simple one-click reset
-            </li>
-          </ul>
-        </div>
-
-        {/* Live Mode Card */}
-        <div
-          onClick={() => setTMode("LIVE")}
-          className={`glass-card p-6 cursor-pointer border-2 transition-all relative ${
-            tMode === "LIVE"
-              ? "border-emerald-500 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-              : "border-slate-800 hover:border-slate-600 opacity-70"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold">
-              <Sparkles size={20} />
-              <span className="text-base tracking-wide">LIVE TOURNAMENT MODE</span>
-            </div>
-            {tMode === "LIVE" && (
-              <span className="badge badge-green text-xs px-2 py-0.5">ACTIVE</span>
-            )}
-          </div>
-          <p className="text-xs text-slate-300 mb-3 leading-relaxed">
-            High-integrity production tournament mode. Strict safeguards are activated: accidental reset is locked behind
-            two-factor confirmation, SOLD players are permanently protected, and auction records are immutable.
-          </p>
-          <ul className="text-xs text-slate-400 space-y-1">
-            <li className="flex items-center gap-1.5">
-              <Check size={12} className="text-emerald-400" /> Accidental reset protection enabled
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Check size={12} className="text-emerald-400" /> SOLD players cannot be resold
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Check size={12} className="text-emerald-400" /> Audit trail permanently logged
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* ── 3. TOURNAMENT IDENTITY & AUCTION RULES ────────────────────────────── */}
+      {/* ── 2. TOURNAMENT IDENTITY & AUCTION RULES ────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Tournament Identity */}
         <div className="glass-card p-6 space-y-4">
@@ -598,33 +515,17 @@ export default function AdminSettingsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Sport Category
-              </label>
-              <input
-                type="text"
-                value={tSport}
-                onChange={(e) => setTSport(e.target.value)}
-                placeholder="e.g. Badminton, Cricket"
-                className="input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Active Arena Mode
-              </label>
-              <select
-                value={tMode}
-                onChange={(e) => setTMode(e.target.value as "PRACTICE" | "LIVE")}
-                className="input w-full font-semibold"
-              >
-                <option value="LIVE">LIVE TOURNAMENT</option>
-                <option value="PRACTICE">PRACTICE AUCTION</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Sport Category
+            </label>
+            <input
+              type="text"
+              value={tSport}
+              onChange={(e) => setTSport(e.target.value)}
+              placeholder="e.g. Badminton, Cricket"
+              className="input w-full"
+            />
           </div>
 
           <div>
@@ -1012,35 +913,17 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Mode After Reset
+                <label className="block text-xs font-semibold text-red-300 mb-1">
+                  Accidental Reset Safeguard: Type "RESET-LIVE-AUCTION" *
                 </label>
-                <select
-                  value={resetTargetMode}
-                  onChange={(e) =>
-                    setResetTargetMode(e.target.value as "PRACTICE" | "LIVE")
-                  }
-                  className="input w-full font-semibold"
-                >
-                  <option value="PRACTICE">PRACTICE AUCTION (Recommended for testing)</option>
-                  <option value="LIVE">LIVE TOURNAMENT (Official tournament)</option>
-                </select>
+                <input
+                  type="text"
+                  value={resetConfirmPhrase}
+                  onChange={(e) => setResetConfirmPhrase(e.target.value)}
+                  placeholder="RESET-LIVE-AUCTION"
+                  className="input w-full font-mono border-red-500/50 text-red-300"
+                />
               </div>
-
-              {isLive && (
-                <div>
-                  <label className="block text-xs font-semibold text-red-300 mb-1">
-                    Accidental Reset Safeguard: Type "RESET-LIVE-AUCTION" *
-                  </label>
-                  <input
-                    type="text"
-                    value={resetConfirmPhrase}
-                    onChange={(e) => setResetConfirmPhrase(e.target.value)}
-                    placeholder="RESET-LIVE-AUCTION"
-                    className="input w-full font-mono border-red-500/50 text-red-300"
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">

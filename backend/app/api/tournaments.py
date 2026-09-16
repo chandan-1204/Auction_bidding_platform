@@ -121,9 +121,9 @@ async def reset_tournament(
     if not t:
         raise NotFound("Tournament")
 
-    target_mode = (data.mode or "PRACTICE").upper()
+    target_mode = (data.mode or "LIVE").upper()
     if target_mode not in ("PRACTICE", "LIVE"):
-        target_mode = "PRACTICE"
+        target_mode = "LIVE"
 
     # 2. Accidental reset protection in LIVE mode
     current_mode = getattr(t, "mode", "LIVE")

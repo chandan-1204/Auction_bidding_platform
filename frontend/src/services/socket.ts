@@ -9,7 +9,7 @@
  */
 import { io, Socket } from "socket.io-client";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "";
+const WS_URL = import.meta.env.VITE_SOCKET_URL || "";
 
 let socket: Socket | null = null;
 

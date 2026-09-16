@@ -20,6 +20,7 @@ from app.schemas.schemas import (
     AuctionStateOut,
     AuctionUpdate,
     BidOut,
+    MarkSoldIn,
     PlaceBidRequest,
 )
 from app.services.auction_service import AuctionService
@@ -162,11 +163,12 @@ async def resume_auction(
 async def admin_bid(
     auction_id: str,
     amount: float = Query(..., gt=0),
+    team_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     svc = AuctionService(db)
-    state = await svc.admin_bid(auction_id, amount, actor_id=admin.id)
+    state = await svc.admin_bid(auction_id, amount, team_id=team_id, actor_id=admin.id)
     await _broadcast_state(auction_id, state)
     return state
 
@@ -186,18 +188,20 @@ async def undo_bid(
 @router.post("/{auction_id}/sold", response_model=AuctionStateOut)
 async def mark_sold(
     auction_id: str,
+    payload: Optional[MarkSoldIn] = None,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    team_id = payload.team_id if payload else None
     svc = AuctionService(db)
-    state = await svc.mark_sold(auction_id, actor_id=admin.id)
+    state = await svc.mark_sold(auction_id, team_id=team_id, actor_id=admin.id)
     await broadcast_sold(auction_id, _state_dict(state))
     await _broadcast_state(auction_id, state)
     # Also broadcast team purse updates
     from app.repositories.repositories import AuctionRepository, TeamRepository as TR
     a_repo = AuctionRepository(db)
     auction = await a_repo.get_by_id(auction_id)
-    if auction and auction.highest_bidder_team_id:
+    if auction:
         t_repo = TR(db)
         teams = await t_repo.get_by_tournament(auction.tournament_id)
         for t in teams:

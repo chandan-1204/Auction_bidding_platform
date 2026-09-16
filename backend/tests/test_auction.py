@@ -260,3 +260,49 @@ async def test_bid_while_paused_rejected(client: AsyncClient, admin_user, captai
     )
     assert resp.status_code == 400
     assert "AUCTION_PAUSED" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_admin_sell_directly_to_team_without_prior_bids(
+    client: AsyncClient, admin_user, captain_user, tournament
+):
+    headers = await admin_headers(client, admin_user)
+    auction = await create_auction(client, admin_user, tournament.id, headers)
+    auction_id = auction["id"]
+    player = await create_player(client, tournament.id, headers, name="DirectSoldPlayer", order=99)
+    await client.post(f"/api/auctions/{auction_id}/start", headers=headers)
+    await client.post(f"/api/auctions/{auction_id}/player/{player['id']}", headers=headers)
+
+    # Admin raises bid manually to 1500 without a team
+    await client.post(f"/api/auctions/{auction_id}/admin-bid?amount=1500", headers=headers)
+
+    # Admin sells directly to captain_user's team
+    sold_resp = await client.post(
+        f"/api/auctions/{auction_id}/sold",
+        headers=headers,
+        json={"team_id": captain_user.team_id},
+    )
+    assert sold_resp.status_code == 200
+    data = sold_resp.json()
+    assert data["state"] == "SOLD"
+    assert data["highest_bidder_team_id"] == captain_user.team_id
+    assert data["current_bid"] == 1500.0
+
+
+@pytest.mark.asyncio
+async def test_draft_auction_active_retrieval(client: AsyncClient, admin_user, tournament):
+    headers = await admin_headers(client, admin_user)
+    # Create auction (creates in DRAFT state)
+    auction = await create_auction(client, admin_user, tournament.id, headers)
+    auction_id = auction["id"]
+
+    # Retrieve active auction for tournament — should return the draft auction
+    active_resp = await client.get(
+        f"/api/auctions/active?tournament_id={tournament.id}", headers=headers
+    )
+    assert active_resp.status_code == 200
+    active_data = active_resp.json()
+    assert active_data is not None
+    assert active_data["id"] == auction_id
+    assert active_data["state"] == "DRAFT"
+
