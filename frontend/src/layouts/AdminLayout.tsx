@@ -1,11 +1,15 @@
 /**
  * Admin Layout — sidebar + topbar + content area.
+ * Mobile-responsive with hamburger menu toggle.
  */
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
   UserCheck,
+  UserPlus,
+  Shield,
   Gavel,
   Trophy,
   History,
@@ -14,18 +18,19 @@ import {
   ChevronRight,
   Settings,
   ExternalLink,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { tournamentApi } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import ConnectionStatusIndicator from "@/components/ConnectionStatusIndicator";
-import type { Tournament } from "@/types";
 
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/admin/auction", icon: Gavel, label: "Live Auction" },
   { to: "/admin/players", icon: Users, label: "Players" },
-  { to: "/admin/teams", icon: UserCheck, label: "Teams" },
+  { to: "/admin/teams", icon: Shield, label: "Teams" },
+  { to: "/admin/users", icon: UserPlus, label: "Users & Accounts" },
   { to: "/admin/history", icon: History, label: "Bid History" },
   { to: "/admin/results", icon: Trophy, label: "Results" },
   { to: "/admin/settings", icon: Settings, label: "Settings" },
@@ -33,36 +38,51 @@ const navItems = [
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
-  const tournamentId = localStorage.getItem("flyhigh_tournament_id");
+  const { tournament: activeTournament } = useActiveTournament();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { data: tournaments = [] } = useQuery<Tournament[]>({
-    queryKey: ["admin_tournaments"],
-    queryFn: () => tournamentApi.list().then((r) => r.data),
-    staleTime: 30_000,
-  });
+  // Auto-close sidebar on route change (mobile navigation)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
-  const activeTournament =
-    tournaments.find((t) => t.id === tournamentId) ?? tournaments[0];
+  // Close sidebar on window resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Prevent body scroll when sidebar open on mobile
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
 
 
   return (
     <div className="admin-layout">
-      {/* Sidebar */}
-      <aside
-        style={{
-          background: "rgba(10, 14, 26, 0.95)",
-          borderRight: "1px solid var(--color-border)",
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-        }}
-      >
-        {/* Logo */}
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
         <div
-          className="p-6"
+          className="admin-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`admin-sidebar ${sidebarOpen ? "admin-sidebar-open" : ""}`}>
+        {/* Logo + close button */}
+        <div
+          className="p-6 flex items-center justify-between"
           style={{ borderBottom: "1px solid var(--color-border)" }}
         >
           <div className="flex items-center gap-3">
@@ -84,6 +104,16 @@ export default function AdminLayout() {
               </p>
             </div>
           </div>
+
+          {/* Close button (mobile only) */}
+          <button
+            className="admin-sidebar-close btn btn-ghost"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            style={{ padding: 8 }}
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -130,6 +160,7 @@ export default function AdminLayout() {
                 height: 36,
                 background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                 color: "white",
+                flexShrink: 0,
               }}
             >
               {user?.username?.charAt(0).toUpperCase() ?? "A"}
@@ -159,21 +190,33 @@ export default function AdminLayout() {
       >
         {/* Sticky Admin Topbar */}
         <header
-          className="px-6 py-3 flex items-center justify-between border-b sticky top-0 z-30 backdrop-blur-md"
+          className="px-4 lg:px-6 py-3 flex items-center justify-between border-b sticky top-0 z-30 backdrop-blur-md"
           style={{
             borderColor: "var(--color-border)",
             background: "rgba(10, 14, 26, 0.85)",
           }}
         >
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">TOURNAMENT:</span>
-            <span className="text-sm font-extrabold text-slate-100 tracking-wide">
+          <div className="flex items-center gap-3">
+            {/* Hamburger button (mobile only) */}
+            <button
+              className="admin-hamburger btn btn-ghost"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+              style={{ padding: 8, marginLeft: -8 }}
+            >
+              <Menu size={22} />
+            </button>
+
+            <span className="text-xs font-bold text-slate-400 hidden sm:inline">TOURNAMENT:</span>
+            <span className="text-sm font-extrabold text-slate-100 tracking-wide truncate">
               {activeTournament?.name || "FLYHIGH LIVE AUCTION"}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <ConnectionStatusIndicator />
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="hidden sm:block">
+              <ConnectionStatusIndicator />
+            </div>
             <a
               href="/live"
               target="_blank"
@@ -181,7 +224,8 @@ export default function AdminLayout() {
               className="btn btn-ghost btn-xs text-blue-400 hover:text-blue-300 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-blue-500/20 bg-blue-500/10"
               title="Open public projector screen in new window"
             >
-              <span>Projector Display</span>
+              <span className="hidden sm:inline">Projector Display</span>
+              <span className="sm:hidden">Live</span>
               <ExternalLink size={12} />
             </a>
           </div>
@@ -194,3 +238,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+

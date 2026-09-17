@@ -88,4 +88,23 @@ async def test_register_user_as_captain_forbidden(client: AsyncClient, captain_u
     assert resp.status_code == 403
 
 
+@pytest.mark.asyncio
+async def test_public_signup(client: AsyncClient, tournament, team):
+    resp = await client.post(
+        "/api/auth/signup",
+        json={
+            "username": "publiccaptain",
+            "email": "publiccaptain@test.com",
+            "password": "securepassword",
+            "role": "captain",
+            "team_id": team.id,
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert data["username"] == "publiccaptain"
+    assert data["role"] == "captain"
+
+
 from tests.conftest import captain_headers

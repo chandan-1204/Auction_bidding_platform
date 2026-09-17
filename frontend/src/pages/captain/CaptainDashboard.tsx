@@ -27,6 +27,7 @@ import {
 import { auctionApi, teamApi, getApiError } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import {
   ConnectionStatus,
   AuctionStateBadge,
@@ -36,11 +37,9 @@ import {
 } from "@/components/AuctionComponents";
 import type { Team, TeamWithRoster } from "@/types";
 
-const TOURNAMENT_KEY = "flyhigh_tournament_id";
-
 export default function CaptainDashboard() {
   const { user, teamId, logout } = useAuth();
-  const tournamentId = localStorage.getItem(TOURNAMENT_KEY);
+  const { tournamentId, isLoading: tournamentLoading } = useActiveTournament();
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bidLoading, setBidLoading] = useState(false);
   const [lastBidError, setLastBidError] = useState<string | null>(null);
@@ -58,9 +57,8 @@ export default function CaptainDashboard() {
 
   // Find active auction
   useEffect(() => {
-    const tid = tournamentId;
-    if (!tid) return;
-    auctionApi.getActive(tid)
+    if (!tournamentId) return;
+    auctionApi.getActive(tournamentId)
       .then((r) => { if (r.data) setAuctionId(r.data.id); })
       .catch(() => {});
   }, [tournamentId]);
@@ -103,6 +101,7 @@ export default function CaptainDashboard() {
   }, [auctionId, canBid, nextBid, refetch, refetchTeam]);
 
   const getBidButtonText = () => {
+    if (!teamId || !team) return "No Team Assigned";
     if (bidLoading) return "Placing Bid…";
     if (!isLive && !isPaused) return "Auction Not Live";
     if (isPaused) return "Auction Paused";
@@ -117,6 +116,14 @@ export default function CaptainDashboard() {
     if (!canBid) return "btn-ghost";
     return "btn-primary";
   };
+
+  if (tournamentLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <LoadingSpinner message="Connecting to live auction…" />
+      </div>
+    );
+  }
 
   if (!tournamentId) {
     return (

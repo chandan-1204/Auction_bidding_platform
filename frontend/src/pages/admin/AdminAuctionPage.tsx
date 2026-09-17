@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { auctionApi, playerApi, teamApi, tournamentApi, getApiError } from "@/services/api";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import { useAuthStore } from "@/store/authStore";
 import {
   ConnectionStatus,
@@ -40,12 +41,8 @@ import {
 } from "@/components/AuctionComponents";
 import type { Auction, Player, Team, Tournament } from "@/types";
 
-const DEMO_TOURNAMENT_KEY = "flyhigh_tournament_id";
-
 export default function AdminAuctionPage() {
-  const [tournamentId, setTournamentId] = useState<string | null>(
-    localStorage.getItem(DEMO_TOURNAMENT_KEY)
-  );
+  const { tournamentId, setTournamentId } = useActiveTournament();
   const [auctionId, setAuctionId] = useState<string | null>(
     localStorage.getItem("flyhigh_auction_id")
   );
@@ -196,7 +193,6 @@ export default function AdminAuctionPage() {
       <div className="p-8 fade-in">
         <SetupPanel onSetup={(tid, aid) => {
           setTournamentId(tid);
-          localStorage.setItem(DEMO_TOURNAMENT_KEY, tid);
           if (aid) {
             setAuctionId(aid);
             localStorage.setItem("flyhigh_auction_id", aid);

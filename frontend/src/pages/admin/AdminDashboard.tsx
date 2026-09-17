@@ -5,12 +5,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Gavel, Users, UserCheck, Trophy, ArrowRight, TrendingUp, Zap } from "lucide-react";
 import { playerApi, teamApi, auctionApi } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import type { Player, Team } from "@/types";
 
-const TOURNAMENT_KEY = "flyhigh_tournament_id";
-
 export default function AdminDashboard() {
-  const tournamentId = localStorage.getItem(TOURNAMENT_KEY);
+  const { tournamentId } = useActiveTournament();
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [auctionState, setAuctionState] = useState<any>(null);

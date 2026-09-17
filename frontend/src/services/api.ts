@@ -21,14 +21,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 by clearing auth state and redirecting
+// Handle 401 by clearing auth state and redirecting (except when already on login page or attempting auth)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    const url = err.config?.url || "";
+    const isAuthEndpoint = url.includes("/api/auth/login") || url.includes("/api/auth/signup");
+    const isLoginPage = typeof window !== "undefined" && window.location.pathname.startsWith("/login");
+
     if (err.response?.status === 401) {
       localStorage.removeItem("flyhigh_token");
       localStorage.removeItem("flyhigh_user");
-      window.location.href = "/login";
+      if (!isAuthEndpoint && !isLoginPage) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(err);
   }
@@ -38,6 +44,7 @@ api.interceptors.response.use(
 export const authApi = {
   login: (username: string, password: string) =>
     api.post("/api/auth/login", { username, password }),
+  signup: (data: object) => api.post("/api/auth/signup", data),
   me: () => api.get("/api/auth/me"),
   register: (data: object) => api.post("/api/auth/register", data),
   listUsers: (role?: string) =>

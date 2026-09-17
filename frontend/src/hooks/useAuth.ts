@@ -42,6 +42,20 @@ export function useAuth() {
     }
   }, [store]);
 
+  const signup = useCallback(
+    async (data: { username: string; email: string; password: string; role?: string; team_id?: string | null }) => {
+      const res = await authApi.signup(data);
+      store.setAuth(res.data);
+
+      if (res.data.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/captain");
+      }
+    },
+    [store, navigate]
+  );
+
   return {
     user: store.user,
     token: store.token,
@@ -51,6 +65,7 @@ export function useAuth() {
     isAdmin: store.role === "admin",
     isCaptain: store.role === "captain",
     login,
+    signup,
     logout,
     fetchMe,
   };

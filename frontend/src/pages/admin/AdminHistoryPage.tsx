@@ -5,28 +5,26 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Filter } from "lucide-react";
 import { auctionApi } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import type { Bid } from "@/types";
 import { LoadingSpinner } from "@/components/AuctionComponents";
 
-const TOURNAMENT_KEY = "flyhigh_tournament_id";
 const AUCTION_KEY = "flyhigh_auction_id";
 
 export default function AdminHistoryPage() {
+  const { tournamentId } = useActiveTournament();
   const [auctionId, setAuctionId] = useState(localStorage.getItem(AUCTION_KEY) ?? "");
 
   useEffect(() => {
-    if (!auctionId) {
-      const tid = localStorage.getItem(TOURNAMENT_KEY);
-      if (tid) {
-        auctionApi.getActive(tid).then((r) => {
-          if (r.data?.id) {
-            setAuctionId(r.data.id);
-            localStorage.setItem(AUCTION_KEY, r.data.id);
-          }
-        }).catch(() => {});
-      }
+    if (!auctionId && tournamentId) {
+      auctionApi.getActive(tournamentId).then((r) => {
+        if (r.data?.id) {
+          setAuctionId(r.data.id);
+          localStorage.setItem(AUCTION_KEY, r.data.id);
+        }
+      }).catch(() => {});
     }
-  }, [auctionId]);
+  }, [auctionId, tournamentId]);
 
   const { data: bids = [], isLoading } = useQuery<Bid[]>({
     queryKey: ["bids", auctionId],

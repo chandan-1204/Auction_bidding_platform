@@ -29,6 +29,25 @@ async def login_form(
     return await svc.login(LoginRequest(username=form.username, password=form.password))
 
 
+@router.post("/signup", response_model=TokenResponse)
+async def signup(
+    data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public registration for new users (e.g. Captain or Admin).
+    Creates the account and automatically logs the user in, returning a JWT token.
+    """
+    from app.core.exceptions import Unauthorized
+    svc = AuthService(db)
+    if data.role == "admin":
+        existing = await svc.repo.list_all()
+        if any(u.role == "admin" for u in existing):
+            raise Unauthorized("Admin accounts cannot be self-registered when an admin exists.")
+
+    await svc.register(data)
+    return await svc.login(LoginRequest(username=data.username, password=data.password))
+
+
 @router.post("/register", response_model=UserOut)
 async def register(
     data: UserCreate,

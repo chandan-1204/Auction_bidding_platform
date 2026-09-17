@@ -18,13 +18,12 @@ import {
 } from "lucide-react";
 import { playerApi, teamApi, getApiError, downloadBlob } from "@/services/api";
 import { auctionApi } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import type { Player, Tournament } from "@/types";
 import { AuctionStateBadge, LoadingSpinner } from "@/components/AuctionComponents";
 
-const TOURNAMENT_KEY = "flyhigh_tournament_id";
-
 export default function AdminPlayersPage() {
-  const tournamentId = localStorage.getItem(TOURNAMENT_KEY) ?? "";
+  const { tournamentId } = useActiveTournament();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");

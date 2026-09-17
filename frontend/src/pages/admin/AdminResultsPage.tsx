@@ -5,26 +5,25 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Trophy, Users, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
-import { auctionApi, downloadBlob, getApiError } from "@/services/api";
+import { auctionApi, getApiError, downloadBlob } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import type { AuctionResults } from "@/types";
 import { LoadingSpinner } from "@/components/AuctionComponents";
 
 export default function AdminResultsPage() {
+  const { tournamentId } = useActiveTournament();
   const [auctionId, setAuctionId] = useState(localStorage.getItem("flyhigh_auction_id") ?? "");
 
   useEffect(() => {
-    if (!auctionId) {
-      const tid = localStorage.getItem("flyhigh_tournament_id");
-      if (tid) {
-        auctionApi.getActive(tid).then((r) => {
-          if (r.data?.id) {
-            setAuctionId(r.data.id);
-            localStorage.setItem("flyhigh_auction_id", r.data.id);
-          }
-        }).catch(() => {});
-      }
+    if (!auctionId && tournamentId) {
+      auctionApi.getActive(tournamentId).then((r) => {
+        if (r.data?.id) {
+          setAuctionId(r.data.id);
+          localStorage.setItem("flyhigh_auction_id", r.data.id);
+        }
+      }).catch(() => {});
     }
-  }, [auctionId]);
+  }, [auctionId, tournamentId]);
 
   const { data: results, isLoading } = useQuery<AuctionResults>({
     queryKey: ["results", auctionId],

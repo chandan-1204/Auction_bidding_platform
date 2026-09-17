@@ -8,13 +8,12 @@ import {
   Plus, Edit2, Trash2, Users, Wallet, Check, X, Loader, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { teamApi, getApiError } from "@/services/api";
+import { useActiveTournament } from "@/hooks/useActiveTournament";
 import type { Team, TeamWithRoster } from "@/types";
 import { LoadingSpinner } from "@/components/AuctionComponents";
 
-const TOURNAMENT_KEY = "flyhigh_tournament_id";
-
 export default function AdminTeamsPage() {
-  const tournamentId = localStorage.getItem(TOURNAMENT_KEY) ?? "";
+  const { tournamentId } = useActiveTournament();
   const queryClient = useQueryClient();
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);

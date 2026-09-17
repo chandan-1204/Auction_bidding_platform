@@ -9,6 +9,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminAuctionPage from "@/pages/admin/AdminAuctionPage";
 import AdminPlayersPage from "@/pages/admin/AdminPlayersPage";
 import AdminTeamsPage from "@/pages/admin/AdminTeamsPage";
+import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminHistoryPage from "@/pages/admin/AdminHistoryPage";
 import AdminResultsPage from "@/pages/admin/AdminResultsPage";
 import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="auction" element={<AdminAuctionPage />} />
             <Route path="players" element={<AdminPlayersPage />} />
             <Route path="teams" element={<AdminTeamsPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
             <Route path="history" element={<AdminHistoryPage />} />
             <Route path="results" element={<AdminResultsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
